@@ -131,3 +131,168 @@ y <- y[keep, keep.lib.sizes=FALSE]
 
 
 ################## Quality Control
+# Library size and distribution plots
+# First, we can check how many reads we have for each sample in the y.
+y$samples$lib.size
+
+# We can also plot the library sizes as a barplot to see whether there are any major discrepancies between the samples more easily.
+# The names argument tells the barplot to use the sample names on the x-axis
+# The las argument rotates the axis names
+barplot(y$samples$lib.size,names=colnames(y),las=2)
+# Add a title to the plot
+title("Barplot of library sizes")
+
+# we can also adjust the labelling if we want
+barplot(y$samples$lib.size/1e06, names=colnames(y), las=2, ann=FALSE, cex.names=0.75)
+mtext(side = 1, text = "Samples", line = 4)
+mtext(side = 2, text = "Library size (millions)", line = 3)
+title("Barplot of library sizes")
+
+# Count data is not normally distributed, so if we want to examine the distributions of the raw counts we need to log the counts
+# Get log2 counts per million
+logcounts <- cpm(y,log=TRUE)
+# Check distributions of samples using boxplots
+boxplot(logcounts, xlab="", ylab="Log2 counts per million",las=2)
+# Let's add a blue horizontal line that corresponds to the median logCPM
+abline(h=median(logcounts),col="blue")
+title("Boxplots of logCPMs (unnormalised)")
+
+# Do any samples appear to be different compared to the others?
+# ANSwER: Some samples have smaller medians
+
+# Multidimensional scaling plots
+plotMDS(y)
+
+# We can colour the samples according to the grouping information. We can also change the labels, or instead of labels we can have points.
+# We specify the option to let us plot two plots side-by-sde
+par(mfrow=c(1,2))
+# Let's set up colour schemes for CellType
+# How many cell types and in what order are they stored?
+levels(sampleinfo$CellType)
+
+## Let's choose purple for basal and orange for luminal
+col.cell <- c("purple","orange")[sampleinfo$CellType]
+data.frame(sampleinfo$CellType,col.cell)
+
+# Redo the MDS with cell type colouring
+plotMDS(y,col=col.cell)
+# Let's add a legend to the plot so we know which colours correspond to which cell type
+legend("topleft",fill=c("purple","orange"),legend=levels(sampleinfo$CellType))
+# Add a title
+title("Cell type")
+
+# Similarly for status
+levels(sampleinfo$Status)
+
+col.status <- c("blue","red","black")[sampleinfo$Status]
+col.status
+
+plotMDS(y, col=col.status)
+legend("topleft",fill=c("blue","red","black"),legend=levels(sampleinfo$Status),cex=0.8)
+title("Status")
+
+## Discussion : Look at the MDS plot coloured by cell type. Is there something strange going on with the samples? Identify the two samples that don’t appear to be in the right place.
+# ANSWER: MCL1.LA and MCl1.LB, CL1.DG and CL1.DH
+
+# There is a sample info corrected file in your data directory
+# Old sample info
+sampleinfo
+
+# I'm going to write over the sampleinfo object with the corrected sample info
+sampleinfo <- read.delim("./data/SampleInfo_Corrected.txt", stringsAsFactors = TRUE)
+sampleinfo
+
+# We need to correct the info for the groups
+group <- factor(paste(sampleinfo$CellType,sampleinfo$Status,sep="."))
+y$samples$group <- group
+
+# Redo the MDSplot with corrected information
+par(mfrow=c(1,2))
+col.cell <- c("purple","orange")[sampleinfo$CellType]
+col.status <- c("blue","red","black")[sampleinfo$Status]
+plotMDS(y,col=col.cell)
+legend("topleft",fill=c("purple","orange"),legend=levels(sampleinfo$CellType))
+title("Cell type")
+plotMDS(y,col=col.status)
+legend("topleft",fill=c("blue","red","black"),legend=levels(sampleinfo$Status),cex=0.8)
+title("Status")
+
+
+# Discussion: What is the greatest source of variation in the data (i.e. what does dimension 1 represent)? What is the second greatest source of variation in the data?
+# Answer: The greatest source of variation are between groups. Dimenstion 1 represents root-mean-square of the largest 500 log2-fold changes between that pair of samples. The 2nd greatest variation is status
+
+## CHALLENGE
+# 1) Redo plots choosing your own color
+# 2) Change the plotting character to a symbol instead of the column names HINT: use pch argument. Try pch=16 and see what happens.
+
+par(mfrow=c(1,2))
+col.cell <- c("red","lightblue")[sampleinfo$CellType]
+col.status <- c("pink","orange","purple")[sampleinfo$Status]
+plotMDS(y,col=col.cell, pch=16)
+legend("topleft",fill=c("red","lightblue"),legend=levels(sampleinfo$CellType))
+title("Cell type")
+plotMDS(y,col=col.status, pch=16)
+legend("topleft",fill=c("pink","orange","purple"),legend=levels(sampleinfo$Status),cex=0.8)
+title("Status")
+
+# Another alternative is to generate an interactive MDS plot using the Glimma package. This allows the user to interactively explore the different dimensions.
+labels <- paste(sampleinfo$SampleName, sampleinfo$CellType, sampleinfo$Status)
+glMDSPlot(y, labels=labels, groups=group, folder="mds")
+
+
+##Hierarchical clustering with heatmaps
+
+# We estimate the variance for each row in the logcounts matrix
+var_genes <- apply(logcounts, 1, var)
+head(var_genes)
+
+# Get the gene names for the top 500 most variable genes
+select_var <- names(sort(var_genes, decreasing=TRUE))[1:500]
+head(select_var)
+
+# Subset logcounts matrix
+highly_variable_lcpm <- logcounts[select_var,]
+dim(highly_variable_lcpm)
+
+## Get some nicer colours
+mypalette <- brewer.pal(11,"RdYlBu")
+morecols <- colorRampPalette(mypalette)
+# Set up colour vector for celltype variable
+col.cell <- c("purple","orange")[sampleinfo$CellType]
+
+# Plot the heatmap
+heatmap.2(highly_variable_lcpm,col=rev(morecols(50)),trace="none", main="Top 500 most variable genes across samples",ColSideColors=col.cell,scale="row")
+
+# Save the heatmap
+png(file="High_var_genes.heatmap.png")
+heatmap.2(highly_variable_lcpm,col=rev(morecols(50)),trace="none", main="Top 500 most variable genes across samples",ColSideColors=col.cell,scale="row")
+dev.off()
+
+
+#### Challenge
+# 1) Change the colour scheme to “PiYG” and redo the heatmap. Try ?RColorBrewer and see what other colour schemes are available.
+# 2) Change the sample names to group using the labCol argument
+# 3) Redo the heatmap using the top 500 LEAST variable genes.
+
+# Get the gene names for the top 500 least variable genes
+select_var_least <- names(sort(var_genes, decreasing=FALSE))[1:500]
+head(select_var_least)
+# Subset logcounts matrix
+least_variable_lcpm <- logcounts[select_var_least,]
+dim(least_variable_lcpm)
+## Get some nicer colours
+mypalette <- brewer.pal(11,"PiYG")
+morecols <- colorRampPalette(mypalette)
+# Set up colour vector for celltype variable
+col.cell <- c("purple","orange")[sampleinfo$CellType]
+# Plot the heatmap
+heatmap.2(least_variable_lcpm, col=rev(morecols(50)),trace="none", main="Top 500 most variable genes across samples",ColSideColors=col.cell,scale="row", labCol = group)
+###################################################
+
+### Add annotation for both cell type and status using aheatmap function from NMF package
+mypalette <- brewer.pal(11,"RdYlBu")
+morecols <- colorRampPalette(mypalette)
+aheatmap(highly_variable_lcpm,col=rev(morecols(50)),main="Top 500 most variable genes across samples",annCol=sampleinfo[, 3:4],labCol=group, scale="row")
+
+
+
