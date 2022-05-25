@@ -1,0 +1,101 @@
+## Install Packages
+if (!requireNamespace("BiocManager"))
+        install.packages("BiocManager")
+BiocManager::install(c("limma", "edgeR", "Glimma", "org.Mm.eg.db", "gplots", "RColorBrewer", "NMF", "BiasedUrn"))
+
+## Library
+library(edgeR)
+library(limma)
+library(Glimma)
+library(org.Mm.eg.db)
+library(gplots)
+library(RColorBrewer)
+library(NMF)
+
+################## Introduction and Data Import 
+# Read the data into R
+seqdata <- read.delim("./data/GSE60450_LactationGenewiseCounts.txt", stringsAsFactors = FALSE)
+
+# Read the sample information into R
+sampleinfo <- read.delim("data/SampleInfo.txt", stringsAsFactors = TRUE)
+
+head(seqdata)
+
+################# Format data 
+# Remove first two columns from seqdata
+countdata <- seqdata[,-(1:2)]
+# Look at the output
+head(countdata)
+
+# Store EntrezGeneID as rownames
+rownames(countdata) <- seqdata[,1]
+
+colnames(countdata)
+
+# using substr, you extract the characters starting at position 1 and stopping at position 7 of the colnames
+colnames(countdata) <- substr(colnames(countdata),start=1,stop=7)
+head(countdata)
+
+# Check to see if column names == sample name
+table(colnames(countdata)==sampleinfo$SampleName)
+
+
+################## Convert counts to DGEList object
+y <- DGEList(countdata) ## edgeR package to store object
+# have a look at y
+y
+
+# See what slots are stored in y
+names(y)
+
+# Library size information is stored in the samples slot
+y$samples
+
+# We can also store the groups for the samples in the DGEList object.
+group <- paste(sampleinfo$CellType, sampleinfo$Status,sep=".")
+# Take a look
+group
+
+# Convert to factor
+group <- factor(group)
+# Take another look.
+group
+
+# Add the group information into the DGEList
+y$samples$group <- group
+y$samples
+
+################## Adding Annotation (We will demonstrate how to do this using the org.Mm.eg.db package)
+
+# First we need to decide what information we want. In order to see what we can extract we can run the columns function on the annotation database.
+columns(org.Mm.eg.db)
+
+# We definitely want gene symbols and perhaps the full gene name. Let’s build up our annotation information in a separate data frame using the select function.
+ann <- select(org.Mm.eg.db,keys=rownames(y$counts),columns=c("ENTREZID","SYMBOL","GENENAME"))
+
+# Have a look at the annotation
+head(ann)
+
+# Let’s double check that the ENTREZID column matches exactly to our y$counts rownames.
+table(ann$ENTREZID==rownames(y$counts))
+
+#We can slot in the annotation information into the genes slot of y. (Please note that if the select function returns a 1:many mapping then you can’t just append the annotation to the y object. An alternative way to get annotation will be discussed during the analysis of the second dataset.)
+y$genes <- ann
+
+################## Filtering lowly expressed genes
+#  In this dataset, we choose to retain genes if they are expressed at a counts-per-million (CPM) above 0.5 in at least two samples.
+# We’ll use the cpm function from the edgeR library (M. D. Robinson, McCarthy, and Smyth 2010) to generate the CPM values and then filter. Note that by converting to CPMs we are normalising for the different sequencing depths for each sample
+
+# Obtain CPMs
+myCPM <- cpm(countdata)
+# Have a look at the output
+head(myCPM)
+
+# Which values in myCPM are greater than 0.5?
+thresh <- myCPM > 0.5
+# This produces a logical matrix with TRUEs and FALSEs
+head(thresh)
+
+# Summary of how many TRUEs there are in each row
+# There are 11433 genes that have TRUEs in all 12 samples.
+table(rowSums(thresh))
