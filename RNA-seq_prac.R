@@ -99,3 +99,35 @@ head(thresh)
 # Summary of how many TRUEs there are in each row
 # There are 11433 genes that have TRUEs in all 12 samples.
 table(rowSums(thresh))
+
+# we would like to keep genes that have at least 2 TRUES in each row of thresh
+keep <- rowSums(thresh) >= 2
+summary(keep)
+
+# As a general rule, a good threshold can be chosen by identifying the CPM that corresponds to a count of 10, which in this case is about 0.5. 
+# Let's have a look and see whether our threshold of 0.5 does indeed correspond to a count of about 10-15
+# We will look at the first sample
+plot(myCPM[,1],countdata[,1])
+
+# Let us limit the x and y-axis so we can actually look to see what is happening at the smaller counts
+plot(myCPM[,1],countdata[,1],ylim=c(0,50),xlim=c(0,3))
+# Add a vertical line at 0.5 CPM
+abline(v=0.5)
+
+######################## Challenge #########################
+# 1) Plot the counts-per-million versus counts for the second sample.
+plot(myCPM[,2],countdata[,2],ylim=c(0,50),xlim=c(0,3))
+
+# 2) Add a vertical line at 0.5 and a horizontal line at 10.
+plot(myCPM[,2],countdata[,2], ylim=c(0,50),xlim=c(0,3))
+abline(v=0.5, h = 10)
+
+# 3) Add the lines again, colouring them blue
+plot(myCPM[,2],countdata[,2], ylim=c(0,50),xlim=c(0,3))
+abline(v=0.5, h = 10, col = "blue")
+
+# Now that we’ve checked our filtering method we will filter the DGEList object.
+y <- y[keep, keep.lib.sizes=FALSE]
+
+
+################## Quality Control
