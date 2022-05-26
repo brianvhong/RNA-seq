@@ -7,6 +7,8 @@ library(org.Mm.eg.db)
 library(gplots)
 library(RColorBrewer)
 library(NMF)
+library(GO.db)
+
 # Load the objects into the workspace that we created yesterday
 load("day1objects.Rdata")
 objects()
@@ -165,3 +167,39 @@ abline(h=0,col="grey")
 glMDPlot(fit.treat, coef=1, counts=v$E, groups=group2,
          status=res.treat, side.main="ENTREZID", main="B.PregVsLac",
          folder="md")
+
+
+################### Gene Set Testing
+
+## Gene ontology testing with goana 
+# goana takes the fit.cont object, the coefficient of interest and the species. The top set of most enriched GO terms can be viewed with the topGO function.
+# The top set of most enriched GO terms can be viewed with the topGO function.
+go <- goana(fit.cont, coef="B.PregVsLac",species = "Mm")
+topGO(go, n=10)
+
+colnames(seqdata)
+
+
+# In order to get the gene lengths for every gene in fit.cont, we can use the match command. Note that the gene length supplied needs to be in the correct order.
+m <- match(rownames(fit.cont),seqdata$EntrezGeneID)
+gene_length <- seqdata$Length[m]
+head(gene_length)
+
+# Rerun goana with gene length information
+go_length <- goana(fit.cont,coef="B.PregVsLac",species="Mm",
+                   covariate=gene_length)
+topGO(go_length, n=10)
+
+
+##### Challenge
+# Perform GO analysis for the second comparison, “L.PregVsLac,” taking into account gene length information
+go_2 <- goana(fit.cont, coef="L.PregVsLac",species = "Mm")
+topGO(go_2, n=10)
+
+
+
+# Rerun goana with gene length information
+go_length_2 <- goana(fit.cont,coef="L.PregVsLac",species="Mm",
+                   covariate=gene_length)
+topGO(go_length_2, n=10)
+
