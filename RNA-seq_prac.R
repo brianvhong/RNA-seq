@@ -1,7 +1,3 @@
-## Install Packages
-if (!requireNamespace("BiocManager"))
-        install.packages("BiocManager")
-BiocManager::install(c("limma", "edgeR", "Glimma", "org.Mm.eg.db", "gplots", "RColorBrewer", "NMF", "BiasedUrn"))
 
 ## Library
 library(edgeR)
@@ -240,7 +236,7 @@ labels <- paste(sampleinfo$SampleName, sampleinfo$CellType, sampleinfo$Status)
 glMDSPlot(y, labels=labels, groups=group, folder="mds")
 
 
-##Hierarchical clustering with heatmaps
+## Hierarchical clustering with heatmaps
 
 # We estimate the variance for each row in the logcounts matrix
 var_genes <- apply(logcounts, 1, var)
@@ -294,5 +290,42 @@ mypalette <- brewer.pal(11,"RdYlBu")
 morecols <- colorRampPalette(mypalette)
 aheatmap(highly_variable_lcpm,col=rev(morecols(50)),main="Top 500 most variable genes across samples",annCol=sampleinfo[, 3:4],labCol=group, scale="row")
 
+
+################## Normalisation for composition bias
+# TMM normalization is performed to eliminate composition biases between libraries 
+# The calcNormFactors function calculates the normalization factors between libraries. TMM normalisation (and most scaling normalisation methods) scale relative to one sample
+
+# Apply normalisation to DGEList object
+y <- calcNormFactors(y)
+y$samples
+
+# The last two samples have much smaller normalisation factors, and MCL1.LA and MCL1.LB have the largest. If we plot mean difference plots using the plotMD function for these samples, we should be able to see the composition bias problem. We will use the logcounts, which have been normalised for library size, but not for composition bias.
+par(mfrow=c(1,2))
+plotMD(logcounts,column = 7)
+abline(h=0,col="grey")
+plotMD(logcounts,column = 11)
+abline(h=0,col="grey")
+
+# The mean-difference plots show average expression (mean: x-axis) against log-fold-changes (difference: y-axis). Because our DGEList object contains the normalisation factors, if we redo these plots using y, we should see the composition bias problem has been solved.
+par(mfrow=c(1,2))
+plotMD(y,column = 7)
+abline(h=0,col="grey")
+plotMD(y,column = 11)
+abline(h=0,col="grey")
+
+### Challenge
+#Plot the biased and unbiased MD plots side by side for the same sample to see the before and after TMM normalisation effect.
+par(mfrow=c(2,2))
+plotMD(logcounts,column = 7)
+abline(h=0,col="grey")
+plotMD(y,column = 7)
+abline(h=0,col="grey")
+plotMD(logcounts,column = 11)
+abline(h=0,col="grey")
+plotMD(y,column = 11)
+abline(h=0,col="grey")
+
+# We need to save a few data objects to use for Day 2 so we don’t have to rerun everything
+save(group,y,logcounts,sampleinfo, seqdata, file="day1objects.Rdata")
 
 
