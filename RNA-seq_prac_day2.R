@@ -127,3 +127,41 @@ glXYPlot(x=fit.cont$coefficients[,1], y=fit.cont$lods[,1],
          xlab="logFC", ylab="B", main="B.PregVsLac",
          counts=v$E, groups=group2, status=summa.fit[,1],
          anno=fit.cont$genes, side.main="ENTREZID", folder="volcano")
+
+##################### Testing relative to a threshold (TREAT)
+
+# Let's decide that we are only interested in genes that have a absolute logFC of 1.
+# This corresponds to a fold change of 2, or 0.5 (i.e. double or half).
+# We can perform a treat analysis which ranks our genes according to p-value AND logFC.
+# This is easy to do after our analysis, we just give the treat function the fit.cont object and specify our cut-off.
+fit.treat <- treat(fit.cont,lfc=1)
+res.treat <- decideTests(fit.treat)
+summary(res.treat)
+topTable(fit.treat,coef=1,sort.by="p")
+
+# Notice that much fewer genes are highlighted in the MAplot
+par(mfrow=c(1,2))
+plotMD(fit.treat,coef=1,status=res.treat[,"B.PregVsLac"], values=c(-1,1), hl.col=c("blue","red"))
+abline(h=0,col="grey")
+plotMD(fit.treat,coef=2,status=res.treat[,"L.PregVsLac"], values=c(-1,1), hl.col=c("blue","red"))
+abline(h=0,col="grey")
+
+
+#### Challenge
+#Change the cut-off so that we are interested in genes that change at least 50% on the fold change scale.
+#HINT: what is the corresponding logFC value of 50% fold change? Assume basal.pregnant is 50% higher than basal.lactate
+fit.treat <- treat(fit.cont,lfc=0.5849625)
+res.treat <- decideTests(fit.treat)
+summary(res.treat)
+topTable(fit.treat,coef=1,sort.by="p")
+
+par(mfrow=c(1,2))
+plotMD(fit.treat,coef=1,status=res.treat[,"B.PregVsLac"], values=c(-1,1), hl.col=c("blue","red"))
+abline(h=0,col="grey")
+plotMD(fit.treat,coef=2,status=res.treat[,"L.PregVsLac"], values=c(-1,1), hl.col=c("blue","red"))
+abline(h=0,col="grey")
+
+# An interactive version of the mean-difference plots is possible via the glMDPlot function in the Glimma package.
+glMDPlot(fit.treat, coef=1, counts=v$E, groups=group2,
+         status=res.treat, side.main="ENTREZID", main="B.PregVsLac",
+         folder="md")
