@@ -1,4 +1,3 @@
 # RNA-seq
 RNA-seq practice
-A line I wrote on my local computer  
-This is a line from RStudio
+
