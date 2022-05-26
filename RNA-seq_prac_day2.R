@@ -54,7 +54,7 @@ fit <- lmFit(v)
 names(fit)
 
 # we are interested in knowing which genes are differentially expressed between the pregnant and lactating group in the basal cells. This is done by defining the null hypothesis as basal.pregnant - basal.lactate = 0 for each gene. Note that the group names must exactly match the column names of the design matrix.
-cont.matrix <- makeContrasts(B.PregVsLac=basal.pregnant - basal.lactate, levels=design)
+cont.matrix <- makeContrasts(B.PregVsLac=basal.pregnant - basal.lactate, L.PregVsLac = luminal.pregnant - luminal.lactate, levels=design)
 cont.matrix
 # Now we can apply the contrasts matrix to the fit object to get the statistics and estimated parameters of our comparison that we are interested in. Here we call the contrasts.fit function in limma.
 fit.cont <- contrasts.fit(fit, cont.matrix)
@@ -66,7 +66,8 @@ dim(fit.cont)
 summa.fit <- decideTests(fit.cont)
 summary(summa.fit)
 
-
+vennDiagram(summa.fit, include=c("up", "down"),
+            counts.col=c("purple", "black"))
 
 # Plots after testing for DE
 # We want to highlight the significant genes. We can get this from decideTests.
@@ -78,6 +79,21 @@ plotMD(fit.cont,coef=1,status=summa.fit[,"B.PregVsLac"], values = c(-1, 1), hl.c
 # let's highlight the top 100 most DE genes
 volcanoplot(fit.cont,coef=1,highlight=100,names=fit.cont$genes$SYMBOL, main="B.PregVsLac")
 
+
+
+
+### Do it for L.PregvsLac
+par(mfrow=c(1,2))
+
+plotMD(fit.cont, coef=1,status=summa.fit[,"L.PregVsLac"], values = c(-1, 1), hl.col=c("blue","red"))
+
+# For the volcano plot we have to specify how many of the top genes to highlight.
+# We can also specify that we want to plot the gene symbol for the highlighted genes.
+# let's highlight the top 100 most DE genes
+volcanoplot(fit.cont,coef=1,highlight=200,names=fit.cont$genes$SYMBOL, main="L.PregVsLac")
+
+########################
+
 # Before following up on the DE genes with further lab work, it is recommended to have a look at the expression levels of the individual samples for the genes of interest. 
 # We can quickly look at grouped expression using stripchart. We can use the normalised log expression values in the voom object (v$E).
 par(mfrow=c(1,3))
@@ -88,6 +104,21 @@ stripchart(v$E["24117",]~group,vertical=TRUE,las=2,cex.axis=0.8,pch=16,col=1:6,m
 # Let's use nicer colours
 nice.col <- brewer.pal(6,name="Dark2")
 stripchart(v$E["24117",]~group,vertical=TRUE,las=2,cex.axis=0.8,pch=16,cex=1.3,col=nice.col,method="jitter",ylab="Normalised log2 expression",main="Wif1")
+
+
+## CHALLENGE
+# Take the top gene from the L.PregVsLactate comparison and make a stripchart of grouped expression as above. (Don’t forget to change the title of the plot.)
+par(mfrow=c(1,3))
+
+stripchart(v$E["12992",]~group)
+# This plot is ugly, let's make it better
+stripchart(v$E["12992",]~group,vertical=TRUE,las=2,cex.axis=0.8,pch=16,col=1:6,method="jitter")
+# Let's use nicer colours
+nice.col <- brewer.pal(6,name="Dark2")
+stripchart(v$E["12992",]~group,vertical=TRUE,las=2,cex.axis=0.8,pch=16,cex=1.3,col=nice.col,method="jitter",ylab="Normalised log2 expression",main="Csn1s2b")
+
+
+
 
 # An interactive version of the volcano plot above that includes the raw per sample values in a separate panel is possible via the glXYPlot function in the Glimma package.
 group2 <- group
